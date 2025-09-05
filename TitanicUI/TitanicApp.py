@@ -50,3 +50,4 @@ if st.button("Predict"):
         st.error(f"Not Survived and probability {probability:2f}")
 
 
+
