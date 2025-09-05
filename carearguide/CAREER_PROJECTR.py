@@ -1,3 +1,8 @@
+# --- SQLite patch for Chroma on Streamlit Cloud ---
+__import__("pysqlite3")
+import sys
+sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+# ---------------------------------------------------
 #import necessary libraries
 import google.generativeai as genai
 import streamlit as st
@@ -56,4 +61,5 @@ if st.button("Generate Career Plan 🚀"):
             advice = career_advice(tech, career, course, timeperiod)
             st.success("✅ Here’s your Career Roadmap:")
             st.write(advice)
+
 
