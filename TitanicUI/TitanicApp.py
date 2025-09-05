@@ -5,7 +5,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # load model 
-with open("log_model.pkl",'rb') as f:
+with open("Log_model.pkl",'rb') as f:
     model = pickle.load(f)
 
 # Load Encoder
@@ -46,4 +46,5 @@ if st.button("Predict"):
     if prediction == 1:
         st.success(f"Survived and probability {probability:2f}")
     else:
+
         st.error(f"Not Survived and probability {probability:2f}")
