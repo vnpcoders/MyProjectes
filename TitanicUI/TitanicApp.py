@@ -9,10 +9,10 @@ with open("TitanicUI/Logmodel.pkl",'rb') as f:
     model = pickle.load(f)
 
 # Load Encoder
-with open("sex_encoder.pkl",'rb') as f:
+with open("TitanicUI/sex_encoder.pkl",'rb') as f:
     sex_enc = pickle.load(f)
 
-with open("emb_encoder.pkl",'rb') as f:
+with open("TitanicUI/emb_encoder.pkl",'rb') as f:
     emb_enc = pickle.load(f)
 
 # Set UI title
@@ -48,6 +48,7 @@ if st.button("Predict"):
     else:
 
         st.error(f"Not Survived and probability {probability:2f}")
+
 
 
 
