@@ -6,6 +6,7 @@ sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 #import necessary libraries
 import google.generativeai as genai
 import streamlit as st
+from langchain_google_genai import  ChatGoogleGenerativeAI
 
 # ✅ Page title and header
 
@@ -15,6 +16,7 @@ st.write("Fill in your preferences and get a personalized career roadmap!")
 #API Configuration
 api_key =st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=api_key)
+model = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
 
 def career_advice(tech, career, course, timeperiod):
     prompt = f"""
@@ -61,5 +63,6 @@ if st.button("Generate Career Plan 🚀"):
             advice = career_advice(tech, career, course, timeperiod)
             st.success("✅ Here’s your Career Roadmap:")
             st.write(advice)
+
 
 
