@@ -1,6 +1,7 @@
 streamlit
-langchain
+langchain==0.0.350
 langchain-google-genai
 langchain-community
 wikipedia
+
 
