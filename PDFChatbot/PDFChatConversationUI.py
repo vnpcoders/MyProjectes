@@ -13,8 +13,8 @@ from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 
-
-genai.configure(api_key=AIzaSyBE-lpNACAu_b6RV5UMLbm2PGXj73wqniw)
+api_key =st.secrets["GOOGLE_API_KEY"]
+genai.configure(api_key=api_key)
 
 st.title("📄 AskMyPDF – Chat with Any PDF Using LangChain")
 
@@ -54,6 +54,7 @@ if uploaded_file:
             st.write(response["answer"])
 else:
     st.info("👆 Upload a PDF to get started")
+
 
 
 
