@@ -10,51 +10,58 @@ from langchain.callbacks import StreamlitCallbackHandler
 st.set_page_config(page_title="Text To Math Problem Solver And Data Search Assistant", page_icon="🧮")
 st.title("Text To Math Problem Solver Using Google Gemini 🚀")
 
-Gemini_API_Key = "AIzaSyBE-lpNACAu_b6RV5UMLbm2PGXj73wqniw"
-
+# Sidebar API key input
 gemini_api_key = st.sidebar.text_input(label="Google Gemini API Key", type="password")
 
 if not gemini_api_key:
     st.info("Please add your Gemini API key to continue")
     st.stop()
 
+# LLM initialization
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=gemini_api_key, temperature=0)
 
+# ---------------------------
+# TOOLS
+# ---------------------------
+
+# Wikipedia Search Tool
 wikipedia_wrapper = WikipediaAPIWrapper()
 wikipedia_tool = Tool(
     name="Wikipedia",
     func=wikipedia_wrapper.run,
-    description="A tool for searching the Internet to find information on various topics."
+    description="A tool to search Wikipedia for facts and information."
 )
 
-
-# Math Tool
+# Math Calculator Tool
 math_chain = LLMMathChain.from_llm(llm=llm)
 calculator = Tool(
     name="Calculator",
     func=math_chain.run,
-    description="A tool for answering math-related questions. Provide only mathematical expressions."
+    description="A tool for solving math expressions."
 )
 
 # Reasoning Tool
 prompt = """
-You are an agent tasked with solving users' mathematical questions. 
-Logically arrive at the solution and provide a detailed explanation.
-Display the steps point-wise.
+You are an intelligent math reasoning assistant.
+Solve the question step-by-step in bullet points.
+Show clear logic and the final answer.
 
-Question: st.text_input({question})
+Question: {question}
 Answer:
 """
-question = st.text_input("Enter your problem here")
+
 prompt_template = PromptTemplate(input_variables=["question"], template=prompt)
 chain = LLMChain(llm=llm, prompt=prompt_template)
 
 reasoning_tool = Tool(
     name="Reasoning Tool",
     func=chain.run,
-    description="A tool for answering logic-based and reasoning questions."
+    description="A tool for detailed reasoning-based mathematical solutions."
 )
 
+# ---------------------------
+# AGENT
+# ---------------------------
 assistant_agent = initialize_agent(
     tools=[wikipedia_tool, calculator, reasoning_tool],
     llm=llm,
@@ -63,26 +70,39 @@ assistant_agent = initialize_agent(
     handle_parsing_errors=True
 )
 
+# ---------------------------
+# CHAT HISTORY
+# ---------------------------
+
 if "messages" not in st.session_state:
     st.session_state["messages"] = [
         {"role": "assistant", "content": "Hi, I'm a Math chatbot powered by Gemini. Ask me any math or knowledge-based question!"}
     ]
 
+# Display history
 for msg in st.session_state.messages:
     st.chat_message(msg["role"]).write(msg['content'])
 
+# ---------------------------
+# USER INPUT
+# ---------------------------
+
+question = st.text_input("Enter your problem here")
+
 if st.button("Find my answer"):
     if question:
+        st.session_state.messages.append({"role": "user", "content": question})
+        st.chat_message("user").write(question)
+
         with st.spinner("Generating response..."):
-            st.session_state.messages.append({"role": "user", "content": question})
-            st.chat_message("user").write(question)
-
             st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)
-            response = assistant_agent.run(st.session_state.messages, callbacks=[st_cb])
 
-            st.session_state.messages.append({'role': 'assistant', "content": response})
-            st.write('### Response:')
-            st.success(response)
+            # FIXED: Pass ONLY the question, not message history
+            response = assistant_agent.run(question, callbacks=[st_cb])
+
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.chat_message("assistant").write(response)
+
     else:
         st.warning("Please enter a question.")
 
