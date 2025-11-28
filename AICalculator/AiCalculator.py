@@ -10,7 +10,7 @@ from langchain.callbacks import StreamlitCallbackHandler
 st.set_page_config(page_title="Text To Math Problem Solver And Data Search Assistant", page_icon="🧮")
 st.title("Text To Math Problem Solver Using Google Gemini 🚀")
 
-#Gemini_API_Key = "AIzaSyBHtrj9Py_7uS8o8tLBYOsh3Qw9I5NPWkA"
+Gemini_API_Key = "AIzaSyBE-lpNACAu_b6RV5UMLbm2PGXj73wqniw"
 
 gemini_api_key = st.sidebar.text_input(label="Google Gemini API Key", type="password")
 
@@ -85,3 +85,4 @@ if st.button("Find my answer"):
             st.success(response)
     else:
         st.warning("Please enter a question.")
+
