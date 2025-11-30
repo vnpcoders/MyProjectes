@@ -1,101 +1,81 @@
+# --- SQLite patch for Chroma on Streamlit Cloud ---
 __import__("pysqlite3")
 import sys
 sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+# ---------------------------------------------------
 
+import os
 import streamlit as st
 import google.generativeai as genai
-import os
-import shutil
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_community.vectorstores import Chroma
-
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
+from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate
 
-
-# 🔑 Load API Key
-api_key =st.secrets["GOOGLE_API_KEY"]
+# --- API Key ---
+api_key = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=api_key)
 
-st.title("📄 AskMyPDF – Chat with Any PDF Using LangChain 1.x + Gemini")
+st.title("📄 PDF Chatbot with Gemini + LangChain")
 
-
-# ----------------------
-# PDF UPLOAD
-# ----------------------
+# --- PDF Upload ---
 uploaded_file = st.file_uploader("Upload a PDF", type="pdf")
 
 if uploaded_file:
-
-    # Remove old Chroma DB to avoid mixing PDFs
-    if os.path.exists("chromadb"):
-        shutil.rmtree("chromadb")
-
-    # Save uploaded file
+    # Save uploaded file locally
     with open("temp.pdf", "wb") as f:
         f.write(uploaded_file.read())
 
-    # Load PDF
+    # --- PDF Loader ---
     loader = PyPDFLoader("temp.pdf")
     data = loader.load()
 
-    # Split text
+    # --- Text Splitting ---
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
-        chunk_overlap=20,
+        chunk_overlap=20
     )
     docs = text_splitter.split_documents(data)
 
-    # Create ChromaDB VectorStore
+    # --- Embeddings + Vector Store ---
     vectorstore = Chroma.from_documents(
         documents=docs,
-        embedding=GoogleGenerativeAIEmbeddings(model="models/embedding-001"),
-        persist_directory="chromadb"
+        embedding=GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
     )
 
-    retriever = vectorstore.as_retriever()
+    retriever = vectorstore.as_retriever(search_type="similarity")
 
-    # LLM (Gemini)
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash")
+    # --- LLM ---
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
 
-    # Prompt Template
-    prompt = ChatPromptTemplate.from_template("""
-You are an intelligent assistant. Use ONLY the provided PDF context to answer the question.
-If answer is not in the PDF, say "Sorry, I could not find that in the document."
+    # --- Prompt Template (fixed for Gemini) ---
+    prompt = ChatPromptTemplate.from_template(
+        "You are a helpful, expert tutor who explains any topic clearly and simply. "
+        "When answering, use this structure:\n\n"
+        "**Definition**: What it is\n"
+        "**How it works**: Key components or steps\n"
+        "**Real-world examples**: Where it's used or seen\n"
+        "**Analogy**: A simple metaphor or comparison\n\n"
+        "Use the following context to answer:\n\n{context}\n\nQuestion: {input}"
 
-Context:
-{context}
+    )
 
-Question: {question}
-""")
-
-    # Documents → Answer chain
+    # --- RAG Chain ---
     question_answer_chain = create_stuff_documents_chain(llm, prompt)
+    rag_chain = create_retrieval_chain(retriever, question_answer_chain)
 
-    # RAG chain using RunnablePassthrough
-    rag_chain = (
-        {"context": retriever, "question": RunnablePassthrough()}
-        | question_answer_chain
-    )
+    # --- Chat UI ---
+    query = st.chat_input("Ask me anything about the PDF:")
 
-    # ----------------------
-    # Chat Input
-    # ----------------------
-    user_query = st.chat_input("Ask me anything about the PDF:")
-
-    if user_query:
+    if query:
         with st.spinner("Thinking..."):
-            response = rag_chain.invoke(user_query)
-            st.write(response["output_text"])
-
+            response = rag_chain.invoke({"input": query})
+            st.write(response["answer"])
 else:
     st.info("👆 Upload a PDF to get started")
-
-
-
 
 
