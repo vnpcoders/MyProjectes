@@ -1,6 +1,7 @@
 import streamlit as st
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.chains import LLMMathChain, LLMChain
+from langchain_community.chains import LLMMathChain
+from langchain.chains.llm import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain.agents.agent_types import AgentType
@@ -97,7 +98,7 @@ if st.button("Find my answer"):
         with st.spinner("Generating response..."):
             st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)
 
-            # FIXED: Pass ONLY the question, not message history
+            # Pass ONLY the user's question
             response = assistant_agent.run(question, callbacks=[st_cb])
 
         st.session_state.messages.append({"role": "assistant", "content": response})
