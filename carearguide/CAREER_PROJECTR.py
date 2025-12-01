@@ -15,7 +15,7 @@ st.write("Fill in your preferences and get a personalized career roadmap!")
 #API Configuration
 api_key =st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 def career_advice(tech, career, course, timeperiod):
     prompt = f"""
@@ -62,6 +62,7 @@ if st.button("Generate Career Plan 🚀"):
             advice = career_advice(tech, career, course, timeperiod)
             st.success("✅ Here’s your Career Roadmap:")
             st.write(advice)
+
 
 
 
