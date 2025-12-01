@@ -1,83 +1,63 @@
 import streamlit as st
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
-
-# Wikipedia Tool
-from langchain_community.utilities import WikipediaAPIWrapper
-
-# Calculator Tool (NEW for LangChain 0.3+)
-from langchain.tools import PythonREPLTool
-
-# Agent
-from langchain.agents import Tool, initialize_agent
-from langchain.agents.agent_types import AgentType
-
-# Streamlit callback handler
-from langchain.callbacks import StreamlitCallbackHandler
-
 from langchain.chains import LLMChain
+from langchain.agents import initialize_agent, Tool
+from langchain_community.utilities import WikipediaAPIWrapper
+import numexpr as ne
 
+st.set_page_config(page_title="Math + Knowledge Assistant", page_icon="🧮")
+st.title("Text → Math Solver & Knowledge Assistant 🚀")
 
-# ---------------------------------------------------------
-# PAGE CONFIG
-# ---------------------------------------------------------
-st.set_page_config(
-    page_title="Text To Math Problem Solver And Data Search Assistant",
-    page_icon="🧮"
-)
-st.title("Text To Math Problem Solver Using Google Gemini 🚀")
-
-
-# ---------------------------------------------------------
-# API KEY (SIDEBAR)
-# ---------------------------------------------------------
-gemini_api_key = st.sidebar.text_input(
-    label="Google Gemini API Key",
-    type="password"
-)
+# Sidebar API Key
+gemini_api_key = st.sidebar.text_input("Google Gemini API Key", type="password")
 
 if not gemini_api_key:
-    st.info("Please add your Gemini API key to continue")
+    st.info("Please enter your Gemini API key to continue.")
     st.stop()
 
-
-# ---------------------------------------------------------
-# LLM INITIALIZATION
-# ---------------------------------------------------------
+# Initialize LLM
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
     google_api_key=gemini_api_key,
     temperature=0
 )
 
-
-# ---------------------------------------------------------
-# TOOLS
-# ---------------------------------------------------------
-
-# Wikipedia tool
-wikipedia_wrapper = WikipediaAPIWrapper()
-wikipedia_tool = Tool(
+# -----------------------
+# 1️⃣ Wikipedia Search Tool
+# -----------------------
+wiki = WikipediaAPIWrapper()
+wiki_tool = Tool(
     name="Wikipedia",
-    func=wikipedia_wrapper.run,
-    description="Search Wikipedia for facts, history, and knowledge."
+    func=wiki.run,
+    description="Search Wikipedia for facts and information."
 )
 
-# Math tool (Python REPL)
-calculator = Tool(
+# -----------------------
+# 2️⃣ Math Calculator Tool (WORKING)
+# -----------------------
+def safe_calculator(expression: str):
+    """Evaluate math expressions safely using numexpr."""
+    try:
+        result = ne.evaluate(expression).item()
+        return f"Result: {result}"
+    except Exception as e:
+        return f"Error evaluating expression: {str(e)}"
+
+calculator_tool = Tool(
     name="Calculator",
-    func=PythonREPLTool().run,
-    description="Executes Python code for math calculations."
+    func=safe_calculator,
+    description="Solve mathematical expressions. Example: 2+3*4"
 )
 
-# Reasoning tool
+# -----------------------
+# 3️⃣ Reasoning Tool
+# -----------------------
 prompt = """
-You are a detailed reasoning assistant.
-Solve the question step-by-step in bullet points.
-Show clear logic and then give the final answer.
+You are a math reasoning assistant.
+Solve step-by-step using bullet points and give the final answer.
 
 Question: {question}
-Answer:
 """
 
 prompt_template = PromptTemplate(
@@ -85,58 +65,47 @@ prompt_template = PromptTemplate(
     template=prompt
 )
 
-reasoning_chain = LLMChain(
-    llm=llm,
-    prompt=prompt_template
-)
+reason_chain = LLMChain(llm=llm, prompt=prompt_template)
 
 reasoning_tool = Tool(
     name="Reasoning Tool",
-    func=reasoning_chain.run,
-    description="Provides step-by-step reasoning for math problems."
+    func=reason_chain.run,
+    description="Detailed reasoning for math solutions."
 )
 
-
-# ---------------------------------------------------------
-# AGENT INITIALIZATION
-# ---------------------------------------------------------
+# -----------------------
+# AGENT
+# -----------------------
 assistant_agent = initialize_agent(
-    tools=[wikipedia_tool, calculator, reasoning_tool],
+    tools=[wiki_tool, calculator_tool, reasoning_tool],
     llm=llm,
-    agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-    verbose=False,
-    handle_parsing_errors=True
+    agent="zero-shot-react-description",
+    handle_parsing_errors=True,
+    verbose=False
 )
 
-
-# ---------------------------------------------------------
-# CHAT HISTORY
-# ---------------------------------------------------------
+# -----------------------
+# Chat UI
+# -----------------------
 if "messages" not in st.session_state:
     st.session_state["messages"] = [
-        {"role": "assistant", "content": "Hi! I'm a Gemini-powered math chatbot. Ask me anything!"}
+        {"role": "assistant", "content": "Hi! I can solve math & search info for you. Ask anything!"}
     ]
 
-for msg in st.session_state["messages"]:
-    st.chat_message(msg["role"]).write(msg["content"])
+for m in st.session_state.messages:
+    st.chat_message(m["role"]).write(m["content"])
 
+question = st.text_input("Enter your problem:")
 
-# ---------------------------------------------------------
-# USER INPUT
-# ---------------------------------------------------------
-question = st.text_input("Enter your problem here")
-
-if st.button("Find my answer"):
+if st.button("Solve"):
     if not question:
         st.warning("Please enter a question.")
     else:
-        st.session_state["messages"].append({"role": "user", "content": question})
+        st.session_state.messages.append({"role": "user", "content": question})
         st.chat_message("user").write(question)
 
-        with st.spinner("Generating response..."):
-            st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)
-            response = assistant_agent.run(question, callbacks=[st_cb])
+        with st.spinner("Thinking..."):
+            response = assistant_agent.run(question)
 
-        st.session_state["messages"].append({"role": "assistant", "content": response})
+        st.session_state.messages.append({"role": "assistant", "content": response})
         st.chat_message("assistant").write(response)
-
