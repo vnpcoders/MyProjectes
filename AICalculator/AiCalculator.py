@@ -2,16 +2,20 @@ import streamlit as st
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
 
-# Tools
+# Wikipedia Tool
 from langchain_community.utilities import WikipediaAPIWrapper
-from langchain_community.tools.numexpr import NumExprTool
 
-# Agents
+# Calculator Tool (NEW for LangChain 0.3+)
+from langchain.tools import PythonREPLTool
+
+# Agent
 from langchain.agents import Tool, initialize_agent
 from langchain.agents.agent_types import AgentType
 
 # Streamlit callback handler
 from langchain.callbacks import StreamlitCallbackHandler
+
+from langchain.chains import LLMChain
 
 
 # ---------------------------------------------------------
@@ -25,7 +29,7 @@ st.title("Text To Math Problem Solver Using Google Gemini 🚀")
 
 
 # ---------------------------------------------------------
-# API KEY
+# API KEY (SIDEBAR)
 # ---------------------------------------------------------
 gemini_api_key = st.sidebar.text_input(
     label="Google Gemini API Key",
@@ -38,7 +42,7 @@ if not gemini_api_key:
 
 
 # ---------------------------------------------------------
-# LLM INIT
+# LLM INITIALIZATION
 # ---------------------------------------------------------
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
@@ -51,7 +55,7 @@ llm = ChatGoogleGenerativeAI(
 # TOOLS
 # ---------------------------------------------------------
 
-# Wikipedia Tool
+# Wikipedia tool
 wikipedia_wrapper = WikipediaAPIWrapper()
 wikipedia_tool = Tool(
     name="Wikipedia",
@@ -59,10 +63,14 @@ wikipedia_tool = Tool(
     description="Search Wikipedia for facts, history, and knowledge."
 )
 
-# New Math Tool replacing LLMMathChain
-calculator = NumExprTool()
+# Math tool (Python REPL)
+calculator = Tool(
+    name="Calculator",
+    func=PythonREPLTool().run,
+    description="Executes Python code for math calculations."
+)
 
-# Reasoning Tool (LLMChain)
+# Reasoning tool
 prompt = """
 You are a detailed reasoning assistant.
 Solve the question step-by-step in bullet points.
@@ -77,7 +85,6 @@ prompt_template = PromptTemplate(
     template=prompt
 )
 
-from langchain.chains import LLMChain
 reasoning_chain = LLMChain(
     llm=llm,
     prompt=prompt_template
@@ -86,12 +93,12 @@ reasoning_chain = LLMChain(
 reasoning_tool = Tool(
     name="Reasoning Tool",
     func=reasoning_chain.run,
-    description="Provides detailed step-by-step reasoning for math problems."
+    description="Provides step-by-step reasoning for math problems."
 )
 
 
 # ---------------------------------------------------------
-# AGENT
+# AGENT INITIALIZATION
 # ---------------------------------------------------------
 assistant_agent = initialize_agent(
     tools=[wikipedia_tool, calculator, reasoning_tool],
@@ -110,7 +117,6 @@ if "messages" not in st.session_state:
         {"role": "assistant", "content": "Hi! I'm a Gemini-powered math chatbot. Ask me anything!"}
     ]
 
-# Display chat history
 for msg in st.session_state["messages"]:
     st.chat_message(msg["role"]).write(msg["content"])
 
@@ -121,22 +127,16 @@ for msg in st.session_state["messages"]:
 question = st.text_input("Enter your problem here")
 
 if st.button("Find my answer"):
-    if question:
+    if not question:
+        st.warning("Please enter a question.")
+    else:
         st.session_state["messages"].append({"role": "user", "content": question})
         st.chat_message("user").write(question)
 
         with st.spinner("Generating response..."):
             st_cb = StreamlitCallbackHandler(st.container(), expand_new_thoughts=False)
-            response = assistant_agent.run(
-                question,
-                callbacks=[st_cb]
-            )
+            response = assistant_agent.run(question, callbacks=[st_cb])
 
         st.session_state["messages"].append({"role": "assistant", "content": response})
         st.chat_message("assistant").write(response)
-
-    else:
-        st.warning("Please enter a question.")
-
-
 
