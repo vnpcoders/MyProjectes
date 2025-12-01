@@ -1,10 +1,9 @@
 streamlit
-langchain
-langchain-core
-langchain-community
-langchain-google-genai
-google-generativeai
+langchain==0.2.12
+langchain-core==0.2.29
+langchain-community==0.2.11
+langchain-google-genai==1.0.7
+pydantic==1.10.13
 wikipedia
 numexpr
-python-dotenv
-
+google-generativeai
