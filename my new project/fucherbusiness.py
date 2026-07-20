@@ -8,7 +8,7 @@ st.write("Fill in your preferences and get a Business roadmap!")
 
 #API Configuration
 genai.configure(api_key="Enter your API key")
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 
 def career_advice(filled, amount, profit,timeperiod):
