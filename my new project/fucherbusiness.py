@@ -1,8 +1,4 @@
-# --- SQLite patch for Chroma on Streamlit Cloud ---
-__import__("pysqlite3")
-import sys
-sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
-# ---------------------------------------------------
+
 
 import google.generativeai as genai
 import streamlit as st
